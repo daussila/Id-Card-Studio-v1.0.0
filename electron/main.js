@@ -17,9 +17,98 @@ const SAMPLE_NAME = 'Sample Students.csv';
 const PORTABLE_DIR = process.env.PORTABLE_EXECUTABLE_DIR;
 if (PORTABLE_DIR) app.setPath('userData', path.join(PORTABLE_DIR, 'ID Card Studio Data', '.app'));
 /** Looked up after start-up, when Windows folder locations are available. */
-const dataRoot = () => PORTABLE_DIR
+const defaultDataRoot = () => PORTABLE_DIR
   ? path.join(PORTABLE_DIR, 'ID Card Studio Data')
   : path.join(app.getPath('documents'), 'ID Card Studio');
+/** Where this computer keeps its choice of data folder (it can be a shared OneDrive / Google Drive / network folder). */
+const locationFile = () => path.join(app.getPath('userData'), 'data-folder.json');
+function savedDataRoot() {
+  try {
+    const saved = JSON.parse(fs.readFileSync(locationFile(), 'utf8'));
+    return saved && typeof saved.path === 'string' && path.isAbsolute(saved.path) ? saved.path : '';
+  } catch (error) {
+    return '';
+  }
+}
+async function rememberDataRoot(folder) {
+  await fs.promises.mkdir(path.dirname(locationFile()), {recursive: true});
+  await fs.promises.writeFile(locationFile(), JSON.stringify({path: folder}, null, 2));
+}
+const looksLikeDataFolder = folder => ['settings.json', 'Data', 'Photos'].some(name => fs.existsSync(path.join(folder, name)));
+/** A chosen folder that already holds ID Card Studio files is used as it is; otherwise "ID Card Studio" is made inside it. */
+function dataFolderIn(chosen) {
+  if (looksLikeDataFolder(chosen) || path.basename(chosen).toLowerCase() === 'id card studio') return chosen;
+  return path.join(chosen, 'ID Card Studio');
+}
+async function pickFolder(parent, title) {
+  const result = await dialog.showOpenDialog(parent, {
+    title, buttonLabel: 'Use this folder', defaultPath: app.getPath('documents'),
+    properties: ['openDirectory', 'createDirectory', 'promptToCreate']
+  });
+  return result.canceled || !result.filePaths.length ? '' : dataFolderIn(result.filePaths[0]);
+}
+/**
+ * The data folder: the portable version keeps it next to the .exe. Otherwise the first start asks
+ * where to keep it (unless files already exist in Documents from an earlier version).
+ */
+async function chooseDataRoot() {
+  if (PORTABLE_DIR) return defaultDataRoot();
+  const saved = savedDataRoot();
+  if (saved) return saved;
+  const standard = defaultDataRoot();
+  if (looksLikeDataFolder(standard)) { await rememberDataRoot(standard); return standard; }
+  const answer = await dialog.showMessageBox({
+    type: 'question', title: 'ID Card Studio', message: 'Where should ID Card Studio keep your lists, photos and designs?',
+    detail: 'Documents: on this computer only.\n\nShared folder: choose a folder in OneDrive, Google Drive, Dropbox or a network drive to use the same lists on several computers. On the other computers, choose the same folder.\n\nYou can change this later in File → Change Data Folder.',
+    buttons: ['Documents (this computer)', 'Choose a shared folder…'], defaultId: 0, cancelId: 0, noLink: true
+  });
+  let folder = '';
+  if (answer.response === 1) folder = await pickFolder(null, 'Choose the folder for ID Card Studio');
+  folder = folder || standard;
+  await rememberDataRoot(folder);
+  return folder;
+}
+/** File → Change Data Folder: use another (for example shared) folder, then restart. */
+async function changeDataFolder() {
+  const target = await pickFolder(mainWindow, 'Choose the new folder for ID Card Studio');
+  if (!target) return;
+  if (path.resolve(target).toLowerCase() === path.resolve(files.root).toLowerCase()) {
+    dialog.showMessageBox(mainWindow, {type: 'info', message: 'ID Card Studio already uses this folder.', detail: target});
+    return;
+  }
+  const inside = path.relative(files.root, target);
+  if (inside && !inside.startsWith('..') && !path.isAbsolute(inside)) {
+    dialog.showMessageBox(mainWindow, {type: 'warning', message: 'Choose a folder outside the current ID Card Studio folder.', detail: files.root});
+    return;
+  }
+  let copy = false;
+  if (fs.existsSync(path.join(target, 'settings.json'))) {
+    const answer = await dialog.showMessageBox(mainWindow, {
+      type: 'question', message: 'Use the ID Card Studio files in this folder?',
+      detail: target + '\n\nThis folder already has lists (for example from another computer). ID Card Studio will restart and use them. Your current folder stays as it is:\n' + files.root,
+      buttons: ['Use this folder', 'Cancel'], defaultId: 0, cancelId: 1, noLink: true
+    });
+    if (answer.response !== 0) return;
+  } else {
+    const answer = await dialog.showMessageBox(mainWindow, {
+      type: 'question', message: 'Copy your lists, photos and designs to the new folder?',
+      detail: 'New folder:\n' + target + '\n\nCurrent folder (it stays as it is):\n' + files.root,
+      buttons: ['Copy my files there', 'Start with an empty folder', 'Cancel'], defaultId: 0, cancelId: 2, noLink: true
+    });
+    if (answer.response === 2) return;
+    copy = answer.response === 0;
+  }
+  try {
+    await fs.promises.mkdir(target, {recursive: true});
+    if (copy) await fs.promises.cp(files.root, target, {recursive: true, force: false, errorOnExist: false});
+    await rememberDataRoot(target);
+  } catch (error) {
+    dialog.showMessageBox(mainWindow, {type: 'error', message: 'The folder could not be used.', detail: String(error.message || error)});
+    return;
+  }
+  app.relaunch();
+  app.quit(); // asks first if a design has unsaved changes
+}
 
 // The app's pages are served from app://studio/ — a secure origin, so the camera, storage and
 // printing work exactly as in a browser.
@@ -82,11 +171,19 @@ function registerFileAccess() {
     // A file from anywhere else is copied into the Data folder; the list uses that copy.
     const imported = await files.importCsv(result.filePaths[0]);
     await files.allow(imported.path);
-    return {path: imported.path, name: path.basename(imported.path), copied: imported.copied, from: path.basename(result.filePaths[0])};
+    // Inside the data folder the file is remembered by its place in the folder ("Data/Students.csv"),
+    // so it is found on every computer that shares the folder.
+    const relative = path.relative(files.root, imported.path);
+    const inside = relative && !relative.startsWith('..') && !path.isAbsolute(relative);
+    return {
+      path: imported.path, name: path.basename(imported.path), copied: imported.copied, from: path.basename(result.filePaths[0]),
+      relative: inside ? relative.split(path.sep).join('/') : ''
+    };
   });
   handle('idcs:openData', async rel => {
     const target = rel ? files.inside(rel) : files.root;
-    await fs.promises.mkdir(target, {recursive: true});
+    const isFile = await fs.promises.stat(target).then(stat => stat.isFile(), () => false);
+    if (!isFile) await fs.promises.mkdir(target, {recursive: true});
     const problem = await shell.openPath(target);
     if (problem) throw new Error(problem);
   });
@@ -134,6 +231,7 @@ function buildMenu() {
       {label: 'Open Data Folder', click: () => shell.openPath(path.join(files.root, 'Data'))},
       {label: 'Open Designs Folder', click: () => shell.openPath(path.join(files.root, 'Designs'))},
       {label: 'Open Photos Folder', click: () => shell.openPath(path.join(files.root, 'Photos'))},
+      ...(PORTABLE_DIR ? [] : [{type: 'separator'}, {label: 'Change Data Folder…', click: changeDataFolder}]),
       ...(IS_MAC ? [{type: 'separator'}, {role: 'close'}] : [{type: 'separator'}, {role: 'quit', label: 'Exit'}])
     ]},
     ...(IS_MAC ? [{role: 'editMenu'}] : []),
@@ -197,7 +295,7 @@ if (!app.requestSingleInstanceLock()) {
     mainWindow.focus();
   });
   app.whenReady().then(async () => {
-    files = createFiles(dataRoot(), path.join(app.getPath('userData'), 'allowed-files.json'));
+    files = createFiles(await chooseDataRoot(), path.join(app.getPath('userData'), 'allowed-files.json'));
     await files.ensureRoot();
     await addSampleOnce();
     // The camera is the only device permission the app needs.
