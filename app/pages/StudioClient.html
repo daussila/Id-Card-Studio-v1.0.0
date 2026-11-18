@@ -575,8 +575,14 @@ window.StudioReliability = (function () {
         const map = {};
         result.fields.forEach(f => { map[f.id] = f.columnIndex; });
         CardDesignRuntime.applyColumnMapping(design, map);
+        const mapKey = CardDesignRuntime.mappingStorageKey(design, STUDIO_TYPE);
         localStorage.setItem(result.scope + 'active_' + STUDIO_TYPE + '_card_design', JSON.stringify(design));
-        localStorage.setItem(result.scope + CardDesignRuntime.mappingStorageKey(design, STUDIO_TYPE), JSON.stringify(map));
+        localStorage.setItem(result.scope + mapKey, JSON.stringify(map));
+        // Also kept in the data folder, so other computers sharing it get the same design.
+        try {
+          const shared = await call('saveListDesign', STUDIO_TYPE, {design, map, mapKey});
+          if (shared && shared.savedAt) localStorage.setItem(result.scope + 'list_design_saved_at', shared.savedAt);
+        } catch (error) { /* this computer still has it */ }
         saving = false;
         dialog.close();
         reopen();
