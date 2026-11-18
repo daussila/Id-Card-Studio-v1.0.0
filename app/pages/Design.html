@@ -1968,16 +1968,27 @@ details.grade-part[open] > summary {margin-bottom:8px}
     event.target.value = '';
     if (!file) return;
     try {
-      const loaded = JSON.parse(await file.text());
+      const text = await file.text();
+      const loaded = JSON.parse(text);
       if (!loaded || loaded.fileType !== 'ID_CARD_DESIGN' || (!Array.isArray(loaded.elements) && !Array.isArray(loaded.frontElements))) {
         throw new Error('Choose a .json file saved by Design Studio.');
       }
+      // A design from another place is copied into the Designs folder, and saving updates that copy.
+      let fileName = file.name;
+      let note = '';
+      try {
+        const imported = await local('importDesign', file.name, text);
+        fileName = imported.fileName;
+        if (imported.copied) note = ' — a copy was saved in the Designs folder' + (fileName === file.name ? '' : ' as ' + fileName);
+      } catch (error) {
+        note = ' (could not copy it into the Designs folder: ' + (error.message || error) + ')';
+      }
       ['fileType', 'schemaVersion', 'savedAt'].forEach(key => delete loaded[key]);
-      loaded.name = nameFromFile(file.name, loaded.name);
+      loaded.name = nameFromFile(fileName, loaded.name);
       loaded.dataSource = 'universal';
       if (!loaded.designId) loaded.designId = crypto.randomUUID();
-      addTab(loaded, file.name);
-      setStatus('Opened ' + file.name);
+      addTab(loaded, fileName);
+      setStatus('Opened ' + fileName + note);
     } catch (error) {
       setStatus('Unable to open design: ' + (error.message || error), true);
     }
