@@ -86,13 +86,25 @@
     }
 
     // -------------------------------------------------------------- settings
-    async function loadSettings() {
-      if (settings) return settings;
-      const text = await platform.readText(SETTINGS_FILE);
+    /**
+     * settings.json is read again before every change, so computers that share the folder
+     * (OneDrive, Google Drive, a network drive) see each other's lists.
+     */
+    let settingsText = null;
+    async function loadSettings(again) {
+      if (settings && !again) return settings;
+      let text;
+      try { text = await platform.readText(SETTINGS_FILE); } catch (error) {
+        if (settings) return settings; // being synced right now: keep what we have
+        throw error;
+      }
+      if (settings && text === settingsText) return settings;
       let saved = {};
       try { saved = text ? JSON.parse(text) : {}; } catch (error) {
+        if (settings) return settings; // half-synced file: try again next time
         throw new Error('settings.json in the data folder is damaged. Restore it from a backup, or rename it to start fresh.');
       }
+      settingsText = text;
       settings = {
         version: 1,
         lists: Array.isArray(saved.lists) ? saved.lists : [],
@@ -100,10 +112,42 @@
         sources: saved.sources && typeof saved.sources === 'object' ? saved.sources : {},
         schoolName: String(saved.schoolName || '')
       };
+      // Lists made before sharing was possible remembered their CSV file by its full path.
+      let moved = false;
+      for (const id of Object.keys(settings.sources)) {
+        const source = settings.sources[id];
+        if (!source || !source.token) continue;
+        const shared = await platform.portableToken(source.token).catch(() => source.token);
+        if (shared !== source.token) {
+          if (!source.scopeToken) source.scopeToken = source.token; // keeps this computer's saved photos and design
+          source.token = shared;
+          moved = true;
+        }
+      }
+      if (moved) await saveSettings().catch(() => {});
       return settings;
     }
     async function saveSettings() {
-      await platform.writeText(SETTINGS_FILE, JSON.stringify(settings, null, 2));
+      settingsText = JSON.stringify(settings, null, 2);
+      await platform.writeText(SETTINGS_FILE, settingsText);
+    }
+    /** Each list's card design and column matching are kept in the data folder, so every computer has them. */
+    const listDesignFile = listId => '.studio/' + safeName(listId, 'list') + '.json';
+    async function readListDesign(listId) {
+      try {
+        const saved = JSON.parse(await platform.readText(listDesignFile(listId)) || 'null');
+        return saved && saved.design && saved.design.fileType === 'ID_CARD_DESIGN' ? saved : null;
+      } catch (error) {
+        return null;
+      }
+    }
+    async function writeListDesign(listId, input) {
+      if (!input || !input.design || input.design.fileType !== 'ID_CARD_DESIGN') return '';
+      const savedAt = new Date().toISOString();
+      await platform.writeText(listDesignFile(listId), JSON.stringify({
+        savedAt, mapKey: String(input.mapKey || ''), map: input.map && typeof input.map === 'object' ? input.map : {}, design: input.design
+      }));
+      return savedAt;
     }
     function cardList(id) {
       const list = settings.lists.find(item => item.id === id);
@@ -147,7 +191,7 @@
     function scopeFor(listId, source) {
       if (!source) return 'idcs_v1_' + listId + '_unconnected_';
       const schema = source.schema || {};
-      return 'idcs_v1_' + listId + '_' + hash(source.token + '|' + (source.header ? 1 : 0) + '|' + (schema.layoutRevision || '')) + '_';
+      return 'idcs_v1_' + listId + '_' + hash((source.scopeToken || source.token) + '|' + (source.header ? 1 : 0) + '|' + (schema.layoutRevision || '')) + '_';
     }
     async function uniquePhotoDir(name, exceptId) {
       const base = safeName(name, 'List');
@@ -460,6 +504,7 @@
       data.scope = scopeFor(list.id, source);
       data.configuration = {hasSpreadsheet: Boolean(source), hasPhotoFolder: true};
       data.source = source ? {name: source.name, location: await platform.sourceLocation(source.token).catch(() => source.name)} : null;
+      if (source) data.listDesign = await readListDesign(list.id);
       if (source) {
         try {
           const payload = await loadRecords(list.id);
@@ -589,6 +634,7 @@
         delete settings.sources[id];
         if (settings.activeList === id) settings.activeList = '';
         await saveSettings();
+        await platform.remove(listDesignFile(id)).catch(() => {});
         return {next: settings.lists.length ? settings.lists[0].id : ''};
       },
 
@@ -629,6 +675,7 @@
           header: typeof input.header === 'boolean' ? input.header : Boolean(sameFile && current.header),
           schema: sameFile ? current.schema || null : null
         };
+        if (sameFile && current.scopeToken) source.scopeToken = current.scopeToken;
         const c = await sourceContext(listId, source);
         const layout = inspectColumns(c);
         if (input.layoutToken && input.layoutToken !== layoutToken(c, layout)) {
@@ -658,7 +705,8 @@
         if (repaired.changed || linked) await writeContext(c);
         settings.sources[listId] = source;
         await saveSettings();
-        return {success: true, scope: scopeFor(listId, source), fields: fields};
+        const designSavedAt = await writeListDesign(listId, input).catch(() => '');
+        return {success: true, scope: scopeFor(listId, source), fields: fields, designSavedAt};
       },
       async resetStudioRecordCodes(listId) {
         const current = settings.sources[listId];
@@ -789,6 +837,12 @@
         return {success: true, fileName: name, fileId: name};
       },
 
+      /** Saves a list's design into the data folder (lists set up before this was possible). */
+      async saveListDesign(listId, input) {
+        cardList(listId);
+        return {savedAt: await writeListDesign(listId, input)};
+      },
+
       // ---------- school name (shown at the top of the app) ----------
       async getSchoolName() { return settings.schoolName || ''; },
       async saveSchoolName(name) {
@@ -880,7 +934,8 @@
     const parallel = new Set(['getStudioPhotoFile', 'getStudioTabsAccess', 'recordStudioPrintRequest', 'pickCsvSource', 'readDesign', 'listDesigns']);
     const wrapped = {};
     Object.keys(api).forEach(name => {
-      wrapped[name] = (...args) => (parallel.has(name) || name === 'init' ? api[name](...args) : exclusive(() => api[name](...args)));
+      wrapped[name] = (...args) => (parallel.has(name) || name === 'init' ? api[name](...args)
+        : exclusive(async () => { if (settings) await loadSettings(true); return api[name](...args); }));
     });
     return Object.freeze(wrapped);
   }
