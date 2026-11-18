@@ -1,0 +1,43 @@
+# Builds the Windows installer and the portable app on GitHub's own Windows computers.
+# Start it from the repository's Actions tab ("Build Windows app" → "Run workflow"),
+# or push a tag such as v1.0.0 to also publish a Release with both files attached.
+name: Build Windows app
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install build tools
+        run: npm install
+
+      - name: Build installer and portable app
+        run: npm run dist
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      - name: Keep the files for download
+        uses: actions/upload-artifact@v4
+        with:
+          name: ID-Card-Studio-Windows
+          path: |
+            dist/*.exe
+
+      - name: Publish a Release (tags only)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.exe
