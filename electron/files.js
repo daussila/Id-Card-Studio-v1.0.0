@@ -58,7 +58,7 @@ function createFiles(dataRoot, allowedFile) {
       await fsp.rename(temp, target);
     } catch (error) {
       await fsp.rm(temp, {force: true});
-      throw error;
+      throw friendly(error, path.basename(target));
     }
   }
 
