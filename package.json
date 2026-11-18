@@ -1,0 +1,84 @@
+{
+  "name": "id-card-studio",
+  "productName": "ID Card Studio",
+  "version": "1.0.0",
+  "description": "Create card lists from CSV files, design ID cards, take photos, and print. For Windows and Mac.",
+  "author": "Mahmut Ziyanoglu",
+  "license": "UNLICENSED",
+  "private": true,
+  "main": "electron/main.js",
+  "scripts": {
+    "vendor": "node scripts/copy-vendor.js",
+    "start": "npm run vendor && electron .",
+    "dist": "npm run vendor && electron-builder --win nsis portable --publish never",
+    "dist:mac": "npm run vendor && electron-builder --mac --publish never"
+  },
+  "devDependencies": {
+    "electron": "^37.2.0",
+    "electron-builder": "^26.0.12",
+    "jsbarcode": "~3.11.5",
+    "qrcode-generator": "~1.4.4"
+  },
+  "build": {
+    "appId": "org.idcardstudio.app",
+    "productName": "ID Card Studio",
+    "copyright": "Copyright © 2026 Mahmut Ziyanoglu",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "electron/**",
+      "app/**",
+      "sample/**",
+      "package.json",
+      "!app/vendor/README.txt"
+    ],
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "ID Card Studio",
+      "artifactName": "ID-Card-Studio-Setup-${version}.${ext}",
+      "deleteAppDataOnUninstall": false
+    },
+    "portable": {
+      "artifactName": "ID-Card-Studio-Portable-${version}.${ext}"
+    },
+    "mac": {
+      "icon": "build/icon.png",
+      "category": "public.app-category.education",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "identity": null,
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false,
+      "artifactName": "ID-Card-Studio-${version}-Mac-${arch}.${ext}",
+      "extendInfo": {
+        "NSCameraUsageDescription": "ID Card Studio uses the camera to take ID card photos.",
+        "NSDocumentsFolderUsageDescription": "ID Card Studio keeps your photos, designs and settings in Documents/ID Card Studio."
+      }
+    },
+    "dmg": {
+      "title": "ID Card Studio",
+      "artifactName": "ID-Card-Studio-${version}-Mac-${arch}.${ext}"
+    },
+    "afterPack": "scripts/mac-adhoc-sign.js"
+  }
+}
