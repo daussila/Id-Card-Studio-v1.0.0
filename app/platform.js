@@ -64,16 +64,52 @@
       remove: rel => native.remove(checkRelative(rel).join('/')),
       async pickCsv() {
         const picked = await native.pickCsv();
-        return picked ? {token: 'path:' + picked.path, name: picked.name, copied: Boolean(picked.copied), from: picked.from || picked.name} : null;
+        if (!picked) return null;
+        const token = picked.relative ? 'data:' + picked.relative : 'path:' + picked.path;
+        return {token, name: picked.name, copied: Boolean(picked.copied), from: picked.from || picked.name};
       },
-      sourceName: async token => baseName(String(token).replace(/^path:/, '')),
-      sourceLocation: async token => String(token).replace(/^path:/, ''),
+      /**
+       * CSV files inside the data folder are remembered by their place in it ("data:Data/Students.csv"),
+       * so computers sharing the folder (OneDrive, Google Drive, network drive) all find them.
+       * Older lists remembered the full path; this turns those into the shared form.
+       */
+      async portableToken(token) {
+        token = String(token || '');
+        if (!token.startsWith('path:')) return token;
+        const full = token.slice(5).replace(/\\/g, '/');
+        const root = String(info.dataRoot).replace(/\\/g, '/').replace(/\/+$/, '');
+        if (full.toLowerCase().startsWith(root.toLowerCase() + '/')) return 'data:' + full.slice(root.length + 1);
+        // A path from another computer's ID Card Studio folder: look for the same file here.
+        const marker = full.toLowerCase().lastIndexOf('/id card studio/');
+        if (marker >= 0) {
+          const rest = full.slice(marker + '/id card studio/'.length);
+          if (rest && await native.exists(rest).catch(() => false)) return 'data:' + rest;
+        }
+        return token;
+      },
+      async sourceName(token) { return baseName(String(token).replace(/^(path|data):/, '')); },
+      async sourceLocation(token) {
+        token = String(token);
+        if (token.startsWith('data:')) return info.dataRoot + (info.sep || '\\') + token.slice(5).split('/').join(info.sep || '\\');
+        return token.replace(/^path:/, '');
+      },
       async readSource(token) {
-        return new Uint8Array(await native.readSource(String(token).replace(/^path:/, '')));
+        token = String(token);
+        if (token.startsWith('data:')) {
+          if (!(await native.exists(checkRelative(token.slice(5)).join('/')))) {
+            throw new Error('The CSV file “' + baseName(token.slice(5)) + '” is not in the Data folder. If the folder is shared, wait for it to finish syncing, or choose the file again in ⚙ Settings.');
+          }
+          return new Uint8Array(await native.readBytes(checkRelative(token.slice(5)).join('/')));
+        }
+        return new Uint8Array(await native.readSource(token.replace(/^path:/, '')));
       },
-      writeSource: (token, bytes) => native.writeSource(String(token).replace(/^path:/, ''), bytes),
+      writeSource: (token, bytes) => String(token).startsWith('data:')
+        ? native.writeBytes(checkRelative(String(token).slice(5)).join('/'), bytes)
+        : native.writeSource(String(token).replace(/^path:/, ''), bytes),
       openData: rel => native.openData(rel ? checkRelative(rel).join('/') : ''),
-      openSource: token => native.openSource(String(token).replace(/^path:/, '')),
+      openSource: token => String(token).startsWith('data:')
+        ? native.openData(checkRelative(String(token).slice(5)).join('/'))
+        : native.openSource(String(token).replace(/^path:/, '')),
       pendingPermissions: async () => [],
       chooseFolder: async () => { await native.openData(''); return {ready: true}; }
     };
@@ -248,6 +284,7 @@
       writeSource: async function (token, bytes) { await writeHandle(await this.sourceHandle(token), bytes); },
       openData: async () => false,
       openSource: async () => false,
+      portableToken: async token => String(token || ''),
       /** CSV files outside the data folder whose permission must be confirmed with a click. */
       async pendingPermissions() {
         const keys = (await allKeys()).filter(key => String(key).startsWith('src_'));
