@@ -389,6 +389,26 @@ dialog.plain footer {display:flex;justify-content:flex-end;gap:8px;margin-top:18
   }
 
   // ---------- Design and setup ----------
+  /** The list's design from the data folder (it may have been changed on another computer). */
+  function useSharedDesign(shared) {
+    if (!shared || !shared.design || !shared.savedAt) return;
+    try {
+      if ((STUDIO_STORAGE.getItem('list_design_saved_at') || '') >= shared.savedAt) return;
+      STUDIO_STORAGE.setItem(designKey(), JSON.stringify(shared.design));
+      if (shared.mapKey) STUDIO_STORAGE.setItem(shared.mapKey, JSON.stringify(shared.map || {}));
+      STUDIO_STORAGE.setItem('list_design_saved_at', shared.savedAt);
+    } catch (error) { /* storage full: the design saved on this computer is used */ }
+  }
+  /** Lists set up before sharing: put this computer's design into the data folder once. */
+  function shareDesign() {
+    const listId = TYPE;
+    const saved = STUDIO_STORAGE.getItem(designKey());
+    if (!saved) return;
+    const mapKey = R.mappingStorageKey(JSON.parse(saved), listId);
+    S.call('saveListDesign', listId, {design: JSON.parse(saved), map: JSON.parse(STUDIO_STORAGE.getItem(mapKey) || '{}'), mapKey})
+      .then(result => { if (result && result.savedAt && TYPE === listId) STUDIO_STORAGE.setItem('list_design_saved_at', result.savedAt); })
+      .catch(() => {});
+  }
   function loadDesign() {
     try {
       const saved = JSON.parse(STUDIO_STORAGE.getItem(designKey()) || 'null');
@@ -1206,7 +1226,9 @@ dialog.plain footer {display:flex;justify-content:flex-end;gap:8px;margin-top:18
       $('sourceSummary').replaceChildren();
       return;
     }
+    useSharedDesign(data.listDesign);
     design = loadDesign();
+    if (design && !data.listDesign && !fromCache) shareDesign();
     configuration = data.configuration || {hasSpreadsheet: false, hasPhotoFolder: false};
     sourceInfo = data.source || null;
     updateSetup();
@@ -1228,12 +1250,33 @@ dialog.plain footer {display:flex;justify-content:flex-end;gap:8px;margin-top:18
         return;
       }
       buildListTabs();
-      if (isReady() && JSON.stringify(sortRecords(fresh.records || [])) !== JSON.stringify(records)) {
+      const designChanged = Boolean(fresh.listDesign && (STUDIO_STORAGE.getItem('list_design_saved_at') || '') < fresh.listDesign.savedAt);
+      if (designChanged) { useSharedDesign(fresh.listDesign); design = loadDesign(); }
+      if (isReady() && (designChanged || JSON.stringify(sortRecords(fresh.records || [])) !== JSON.stringify(records))) {
         populate(fresh.records || [], fresh.headers);
+        if (designChanged && view === 'gallery') showGallery();
         refreshPreview();
       }
     } catch (error) { /* the list on screen stays usable */ }
   }
+  /**
+   * Coming back to the app: pick up people, photos and design changes made meanwhile, for example
+   * on another computer that shares the data folder, or in Excel.
+   */
+  let lastFocusRefresh = Date.now();
+  function refreshOnReturn() {
+    if (!TYPE || !isReady() || Date.now() - lastFocusRefresh < 15000) return;
+    if (document.querySelector('dialog[open]')) return; // never while someone is typing in a form
+    lastFocusRefresh = Date.now();
+    refreshListInBackground(TYPE, switchToken);
+  }
+  window.addEventListener('focus', refreshOnReturn);
+  try {
+    if (window.top !== window) {
+      window.top.addEventListener('focus', refreshOnReturn);
+      window.addEventListener('pagehide', () => { try { window.top.removeEventListener('focus', refreshOnReturn); } catch (error) { /* closed */ } });
+    }
+  } catch (error) { /* top window not reachable */ }
   /** Opens a list. Visited lists appear instantly; new ones need one request. */
   async function openList(id, options) {
     options = options || {};
