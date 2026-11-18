@@ -845,6 +845,28 @@
         if (text == null) throw new Error('“' + name + '” is no longer in the Designs folder.');
         return text;
       },
+      /**
+       * A design opened from anywhere else on the computer is copied into the Designs folder.
+       * The same file chosen again (same name and content) is not copied twice.
+       * Returns {fileName, copied}.
+       */
+      async importDesign(fileName, text) {
+        if (typeof text !== 'string' || text.length > 20000000) throw new Error('The design is too large.');
+        const parsed = JSON.parse(text);
+        if (!parsed || parsed.fileType !== 'ID_CARD_DESIGN') throw new Error('Choose a .json file saved by Design Studio.');
+        await platform.ensureDir('Designs');
+        const base = safeName(String(fileName || '').replace(/\.json$/i, ''), 'Untitled');
+        for (let n = 1; n < 1000; n++) {
+          const name = (n === 1 ? base : base + ' (' + n + ')') + '.json';
+          const existing = await platform.readText('Designs/' + name);
+          if (existing === text) return {fileName: name, copied: false};
+          if (existing == null) {
+            await platform.writeText('Designs/' + name, text);
+            return {fileName: name, copied: true};
+          }
+        }
+        throw new Error('Too many designs with this name in the Designs folder.');
+      },
       async saveDesign(fileName, text) {
         const name = safeName(String(fileName || '').replace(/\.json$/i, ''), 'Untitled') + '.json';
         if (typeof text !== 'string' || text.length > 20000000) throw new Error('The design is too large to save.');
