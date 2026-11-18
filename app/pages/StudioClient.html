@@ -532,7 +532,21 @@ window.StudioReliability = (function () {
       fileInput.value = '';
       if (!file) return;
       try {
-        useDesign(await file.text(), file.name);
+        const text = await file.text();
+        validDesign(JSON.parse(text)); // only real designs are copied
+        // A design from another place is copied into the Designs folder.
+        let fileName = file.name;
+        let note = '';
+        try {
+          const imported = await call('importDesign', file.name, text);
+          fileName = imported.fileName;
+          if (imported.copied) note = '✓ “' + file.name + '” was copied into the Designs folder' + (fileName === file.name ? '.' : ' as “' + fileName + '”.');
+        } catch (error) {
+          note = 'Could not copy the design into the Designs folder: ' + (error.message || error);
+        }
+        useDesign(text, fileName);
+        await fillDesigns();
+        if (note) setStatus(status, note, note.startsWith('Could not'));
       } catch (error) {
         setStatus(status, error.message || String(error), true);
       }
