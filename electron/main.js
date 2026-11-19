@@ -35,9 +35,23 @@ async function rememberDataRoot(folder) {
   await fs.promises.writeFile(locationFile(), JSON.stringify({path: folder}, null, 2));
 }
 const looksLikeDataFolder = folder => ['settings.json', 'Data', 'Photos'].some(name => fs.existsSync(path.join(folder, name)));
-/** A chosen folder that already holds ID Card Studio files is used as it is; otherwise "ID Card Studio" is made inside it. */
+/** True for a folder with nothing in it (Windows/Mac housekeeping files aside). */
+function isEmptyFolder(folder) {
+  try {
+    return fs.readdirSync(folder).filter(name => !/^(\.|desktop\.ini$|thumbs\.db$)/i.test(name)).length === 0;
+  } catch (error) {
+    return true; // does not exist yet: it will be created
+  }
+}
+/**
+ * Which folder to use for a folder the person chose:
+ *  - a folder with ID Card Studio files, or an empty folder (for example one they just made) → that folder itself
+ *  - a drive (D:\) or a folder with other things in it (Desktop, Documents…) → an "ID Card Studio" folder inside it
+ */
 function dataFolderIn(chosen) {
+  const isDrive = path.parse(chosen).root === chosen || path.resolve(chosen) === path.parse(path.resolve(chosen)).root;
   if (looksLikeDataFolder(chosen) || path.basename(chosen).toLowerCase() === 'id card studio') return chosen;
+  if (!isDrive && isEmptyFolder(chosen)) return chosen;
   return path.join(chosen, 'ID Card Studio');
 }
 async function pickFolder(parent, title) {
@@ -59,8 +73,8 @@ async function chooseDataRoot() {
   if (looksLikeDataFolder(standard)) { await rememberDataRoot(standard); return standard; }
   const answer = await dialog.showMessageBox({
     type: 'question', title: 'ID Card Studio', message: 'Where should ID Card Studio keep your lists, photos and designs?',
-    detail: 'Documents: on this computer only.\n\nShared folder: choose a folder in OneDrive, Google Drive, Dropbox or a network drive to use the same lists on several computers. On the other computers, choose the same folder.\n\nYou can change this later in File → Change Data Folder.',
-    buttons: ['Documents (this computer)', 'Choose a shared folder…'], defaultId: 0, cancelId: 0, noLink: true
+    detail: 'Documents: in "Documents\\ID Card Studio" on this computer.\n\nOther folder: any folder you like, for example on the Desktop, on another drive (D:\\), a folder you made yourself, or a shared OneDrive / Google Drive / network folder to use the same lists on several computers.\n\nYou can change this any time in File → Change Data Folder.',
+    buttons: ['Documents', 'Choose a folder…'], defaultId: 0, cancelId: 0, noLink: true
   });
   let folder = '';
   if (answer.response === 1) folder = await pickFolder(null, 'Choose the folder for ID Card Studio');
@@ -68,8 +82,15 @@ async function chooseDataRoot() {
   await rememberDataRoot(folder);
   return folder;
 }
-/** File → Change Data Folder: use another (for example shared) folder, then restart. */
+/** File → Change Data Folder: use any other folder (Desktop, D:\, a shared folder…), then restart. */
 async function changeDataFolder() {
+  const first = await dialog.showMessageBox(mainWindow, {
+    type: 'info', title: 'Data Folder', message: 'ID Card Studio keeps your lists, photos and designs in:',
+    detail: files.root + '\n\nYou can use any other folder: on the Desktop, on another drive (for example D:\\), a folder you made yourself, or a shared OneDrive / Google Drive / network folder.',
+    buttons: ['Choose another folder…', 'Open this folder', 'Cancel'], defaultId: 0, cancelId: 2, noLink: true
+  });
+  if (first.response === 1) { shell.openPath(files.root); return; }
+  if (first.response !== 0) return;
   const target = await pickFolder(mainWindow, 'Choose the new folder for ID Card Studio');
   if (!target) return;
   if (path.resolve(target).toLowerCase() === path.resolve(files.root).toLowerCase()) {
