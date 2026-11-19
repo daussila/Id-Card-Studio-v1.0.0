@@ -68,7 +68,27 @@ async function pickFolder(parent, title) {
 async function chooseDataRoot() {
   if (PORTABLE_DIR) return defaultDataRoot();
   const saved = savedDataRoot();
-  if (saved) return saved;
+  if (saved && fs.existsSync(saved)) return saved;
+  if (saved) {
+    // The folder was renamed or moved (for example to "ID Card Studio 2026-2027"), or its drive is not connected.
+    for (;;) {
+      const answer = await dialog.showMessageBox({
+        type: 'warning', title: 'ID Card Studio', message: 'The ID Card Studio folder was not found.',
+        detail: saved + '\n\nIf you renamed or moved it, click "Find the folder…" and choose it. If it is on a USB stick, a network drive or in a cloud folder, connect it first and click "Try again".',
+        buttons: ['Find the folder…', 'Try again', 'Start a new empty folder there', 'Quit'], defaultId: 0, cancelId: 3, noLink: true
+      });
+      if (answer.response === 0) {
+        const folder = await pickFolder(null, 'Choose your ID Card Studio folder');
+        if (folder) { await rememberDataRoot(folder); return folder; }
+      } else if (answer.response === 1) {
+        if (fs.existsSync(saved)) return saved;
+      } else if (answer.response === 2) {
+        return saved;
+      } else {
+        return '';
+      }
+    }
+  }
   const standard = defaultDataRoot();
   if (looksLikeDataFolder(standard)) { await rememberDataRoot(standard); return standard; }
   const answer = await dialog.showMessageBox({
@@ -316,7 +336,9 @@ if (!app.requestSingleInstanceLock()) {
     mainWindow.focus();
   });
   app.whenReady().then(async () => {
-    files = createFiles(await chooseDataRoot(), path.join(app.getPath('userData'), 'allowed-files.json'));
+    const root = await chooseDataRoot();
+    if (!root) { app.quit(); return; }
+    files = createFiles(root, path.join(app.getPath('userData'), 'allowed-files.json'));
     await files.ensureRoot();
     await addSampleOnce();
     // The camera is the only device permission the app needs.
