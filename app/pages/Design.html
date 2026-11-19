@@ -27,19 +27,26 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .btn.primary .key {color:#dbe7ff}
 /* “Add to card” rail: a slim column of icons at the left of the card area */
 .rail-anchor {position:sticky;top:12px;z-index:40;align-self:stretch;width:100%;height:0}
-.rail {position:absolute;top:12px;left:12px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 6px;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 8px 22px rgba(16,42,86,.12)}
-.rail-title {margin-bottom:2px;color:var(--muted);font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
-.rail-sep {width:26px;height:1px;margin:4px 0;background:var(--line)}
+.rail {position:absolute;top:12px;left:12px;display:flex;flex-direction:column;align-items:center;gap:4px;width:92px;padding:10px 7px;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 8px 22px rgba(16,42,86,.12)}
+.rail-title {margin-bottom:2px;color:#344054;font-size:11px;font-weight:800;letter-spacing:.03em;text-align:center;text-transform:uppercase}
+.rail-group {margin:2px 0 1px;font-size:9.5px;font-weight:800;line-height:1.2;letter-spacing:.02em;text-align:center;text-transform:uppercase}
+.rail-group.data {color:#2563eb}
+.rail-group.fixed {color:#15803d}
+.rail-sep {width:60px;height:1px;margin:5px 0 3px;background:var(--line)}
 .rail .menu-wrap {position:static}
 .rail .menu {top:0;left:calc(100% + 10px)}
-.rail-btn {position:relative;display:grid;place-items:center;width:40px;height:40px;padding:0;border:1px solid transparent;border-radius:10px;background:transparent;cursor:pointer}
+.rail-btn {position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;width:78px;min-height:52px;padding:6px 4px 5px;border:1px solid transparent;border-radius:10px;background:transparent;cursor:pointer}
+.rail-btn.data {background:#f4f7ff;border-color:#e1e9fb}
+.rail-btn.fixed {background:#f2faf4;border-color:#dcefe1}
+.rail-label {color:#344054;font-size:11.5px;font-weight:700;line-height:1.1;white-space:nowrap}
+.rail-btn:hover .rail-label,.rail-btn[aria-expanded=true] .rail-label {color:#101828}
 .rail-btn[data-icon]::before {flex:none;width:22px;height:22px}
 .rail-btn.data[data-icon]::before {background:#2563eb}
 .rail-btn.fixed[data-icon]::before {background:#16a34a}
-.rail-btn.data:hover,.rail-btn.data[aria-expanded=true] {background:#eef4ff;border-color:#c9daf8}
-.rail-btn.fixed:hover,.rail-btn.fixed[aria-expanded=true] {background:#effaf2;border-color:#cfe6d4}
+.rail-btn.data:hover,.rail-btn.data[aria-expanded=true] {background:#e3ecff;border-color:#9fbcf3}
+.rail-btn.fixed:hover,.rail-btn.fixed[aria-expanded=true] {background:#ddf3e3;border-color:#9fd3ae}
 .rail-btn:focus-visible {outline:2px solid var(--accent);outline-offset:1px}
-.rail-more {position:absolute;right:3px;bottom:3px;width:0;height:0;border-left:5px solid transparent;border-bottom:5px solid #98a2b3}
+.rail-more {position:absolute;top:5px;right:5px;width:0;height:0;border-left:4px solid #98a2b3;border-top:4px solid transparent;border-bottom:4px solid transparent}
 /* name and purpose appear next to the icon */
 .rail-btn::after {content:attr(data-tip);position:absolute;top:50%;left:calc(100% + 10px);z-index:60;padding:5px 9px;border-radius:6px;background:#17233a;color:#fff;font-size:12px;font-weight:600;white-space:nowrap;transform:translateY(-50%);opacity:0;pointer-events:none;transition:opacity .12s}
 .rail-btn:hover::after,.rail-btn:focus-visible::after {opacity:1}
@@ -111,7 +118,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 /* Canvas */
 .workspace {display:flex;flex-direction:column;min-width:0;overflow:auto}
 #sizeLabel {margin:0;padding:8px;color:#475467;font-size:11px;text-align:center}
-.card-shell {display:flex;flex:1;align-items:flex-start;justify-content:center;padding:28px 28px 60px}
+.card-shell {display:flex;flex:1;align-items:flex-start;justify-content:center;padding:28px 28px 60px 124px}
 #cardSizer {position:relative;flex:0 0 auto}
 .design-card {position:absolute;top:0;left:0;overflow:hidden;background:#fff;border:1px solid #98a2b3;transform-origin:top left;touch-action:none;box-shadow:0 20px 42px rgba(16,42,86,.22),0 2px 5px rgba(16,42,86,.12)}
 .lanyard {position:absolute;z-index:999;top:7px;left:50%;width:56px;height:12px;transform:translateX(-50%);background:#e4eaf2;border:1px solid #98a2b3;border-radius:8px;pointer-events:none}
@@ -216,6 +223,8 @@ details.grade-part[open] > summary {margin-bottom:8px}
 .shortcuts kbd {padding:1px 6px;border:1px solid #c9d4e2;border-radius:4px;background:#f6f8fb;font:12px Consolas,monospace}
 
 @media(max-width:1100px) {.app {grid-template-columns:210px minmax(0,1fr) 290px}}
+@media(max-height:820px) {.rail-btn {min-height:44px;padding:4px 4px 3px;gap:2px}.rail-btn[data-icon]::before {width:19px;height:19px}.rail-label {font-size:11px}.rail-group {font-size:9px}}
+@media(max-height:700px) {.rail {gap:3px;padding:7px 6px}.rail-btn {min-height:40px;padding:3px 4px 2px}.rail-btn[data-icon]::before {width:18px;height:18px}.rail-group {display:none}.rail-title {font-size:10px}.rail-sep {margin:3px 0}}
 @media(max-width:900px) {
   body {display:block}
   .app {display:flex;flex-direction:column}
@@ -274,38 +283,40 @@ details.grade-part[open] > summary {margin-bottom:8px}
       <!-- Add to card: a slim rail of icons; blue = from the data source, green = same on every card -->
       <div class="rail-anchor">
         <div class="rail" role="toolbar" aria-label="Add to card" aria-orientation="vertical">
-          <span class="rail-title">Add</span>
-    <button class="rail-btn data" type="button" data-add="photo" data-icon="camera" data-tip="Photo · each person’s photo" aria-label="Photo"></button>
-    <div class="menu-wrap"><button class="rail-btn data has-menu" type="button" data-menu="nameMenu" aria-expanded="false" data-icon="person" data-tip="Name ▸ Full, First, Middle, Last" aria-label="Name"><span class="rail-more" aria-hidden="true"></span></button>
+          <span class="rail-title">Add to card</span>
+          <span class="rail-group data">From your list</span>
+    <button class="rail-btn data" type="button" data-add="photo" data-icon="camera" data-tip="Photo · each person’s photo" aria-label="Photo"><span class="rail-label">Photo</span></button>
+    <div class="menu-wrap"><button class="rail-btn data has-menu" type="button" data-menu="nameMenu" aria-expanded="false" data-icon="person" data-tip="Name ▸ Full, First, Middle, Last" aria-label="Name"><span class="rail-label">Name</span><span class="rail-more" aria-hidden="true"></span></button>
       <div id="nameMenu" class="menu" hidden></div>
     </div>
-    <div class="menu-wrap"><button class="rail-btn data has-menu" type="button" data-menu="codeMenu" aria-expanded="false" data-icon="barcode" data-tip="ID & codes ▸ ID number, Barcode, QR code" aria-label="ID and codes"><span class="rail-more" aria-hidden="true"></span></button>
+    <div class="menu-wrap"><button class="rail-btn data has-menu" type="button" data-menu="codeMenu" aria-expanded="false" data-icon="barcode" data-tip="ID & codes ▸ ID number, Barcode, QR code" aria-label="ID and codes"><span class="rail-label">ID &amp; Codes</span><span class="rail-more" aria-hidden="true"></span></button>
       <div id="codeMenu" class="menu" hidden></div>
     </div>
-    <div class="menu-wrap"><button class="rail-btn data has-menu" type="button" data-menu="schoolMenu" aria-expanded="false" data-icon="home" data-tip="School ▸ Grade, Class, Homeroom, Job title…" aria-label="School"><span class="rail-more" aria-hidden="true"></span></button>
+    <div class="menu-wrap"><button class="rail-btn data has-menu" type="button" data-menu="schoolMenu" aria-expanded="false" data-icon="home" data-tip="School ▸ Grade, Class, Homeroom, Job title…" aria-label="School"><span class="rail-label">School</span><span class="rail-more" aria-hidden="true"></span></button>
       <div id="schoolMenu" class="menu" hidden></div>
     </div>
-    <div class="menu-wrap"><button class="rail-btn data has-menu" type="button" data-menu="moreMenu" aria-expanded="false" data-icon="card" data-tip="More fields ▸ Contact, Dates, Other" aria-label="More fields"><span class="rail-more" aria-hidden="true"></span></button>
+    <div class="menu-wrap"><button class="rail-btn data has-menu" type="button" data-menu="moreMenu" aria-expanded="false" data-icon="card" data-tip="More fields ▸ Contact, Dates, Other" aria-label="More fields"><span class="rail-label">More</span><span class="rail-more" aria-hidden="true"></span></button>
       <div id="moreMenu" class="menu" hidden>
           <input id="dataSearch" class="input" type="search" placeholder="Find any field… (e.g. email)" aria-label="Find a data field">
           <div id="moreOptions"></div>
         </div>
     </div>
     <span class="rail-sep" aria-hidden="true"></span>
-    <button class="rail-btn fixed" type="button" data-add="logo" data-icon="badge" data-tip="Logo · same on every card" aria-label="Logo"></button>
-    <div class="menu-wrap"><button class="rail-btn fixed has-menu" type="button" data-menu="textMenu" aria-expanded="false" data-icon="text" data-tip="Text ▸ Text, School year" aria-label="Text"><span class="rail-more" aria-hidden="true"></span></button>
+    <span class="rail-group fixed">Same on every card</span>
+    <button class="rail-btn fixed" type="button" data-add="logo" data-icon="badge" data-tip="Logo · same on every card" aria-label="Logo"><span class="rail-label">Logo</span></button>
+    <div class="menu-wrap"><button class="rail-btn fixed has-menu" type="button" data-menu="textMenu" aria-expanded="false" data-icon="text" data-tip="Text ▸ Text, School year" aria-label="Text"><span class="rail-label">Text</span><span class="rail-more" aria-hidden="true"></span></button>
       <div id="textMenu" class="menu" hidden>
         <button type="button" data-add="instructions" data-icon="text">Text<small>Words that are the same on every card, e.g. a heading or rules</small></button>
         <button type="button" data-add="schoolYear" data-icon="calendar">School Year<small>e.g. 2026–2027</small></button>
       </div>
     </div>
-    <div class="menu-wrap"><button class="rail-btn fixed has-menu" type="button" data-menu="imageMenu" aria-expanded="false" data-icon="image" data-tip="Image ▸ Picture, Signature" aria-label="Image"><span class="rail-more" aria-hidden="true"></span></button>
+    <div class="menu-wrap"><button class="rail-btn fixed has-menu" type="button" data-menu="imageMenu" aria-expanded="false" data-icon="image" data-tip="Image ▸ Picture, Signature" aria-label="Image"><span class="rail-label">Image</span><span class="rail-more" aria-hidden="true"></span></button>
       <div id="imageMenu" class="menu" hidden>
         <button type="button" data-add="image" data-icon="image">Picture<small>Any image from your computer</small></button>
         <button type="button" data-add="signature" data-icon="signature">Signature<small>e.g. the principal’s; a transparent PNG works best</small></button>
       </div>
     </div>
-    <div class="menu-wrap"><button class="rail-btn fixed has-menu" type="button" data-menu="shapeMenu" aria-expanded="false" data-icon="rectangle" data-tip="Shape ▸ Rectangle, Circle, Line, Symbol" aria-label="Shape"><span class="rail-more" aria-hidden="true"></span></button>
+    <div class="menu-wrap"><button class="rail-btn fixed has-menu" type="button" data-menu="shapeMenu" aria-expanded="false" data-icon="rectangle" data-tip="Shape ▸ Rectangle, Circle, Line, Symbol" aria-label="Shape"><span class="rail-label">Shape</span><span class="rail-more" aria-hidden="true"></span></button>
       <div id="shapeMenu" class="menu" hidden>
         <button type="button" data-add="rectangle" data-icon="rectangle">Rectangle<small>A colored band or box, e.g. behind a heading</small></button>
         <button type="button" data-add="circle" data-icon="circle">Circle<small>A colored circle or ring</small></button>
@@ -341,13 +352,6 @@ details.grade-part[open] > summary {margin-bottom:8px}
           <div class="field"><label class="label" for="customWidth">Width (in)</label><input id="customWidth" class="input" type="number" min="1" max="8.5" step="0.01"></div>
           <div class="field"><label class="label" for="customHeight">Height (in)</label><input id="customHeight" class="input" type="number" min="1" max="8.5" step="0.01"></div>
         </div>
-        <div id="orientationField" class="field">
-          <span class="label">Direction</span>
-          <div class="segmented" role="group" aria-label="Card direction">
-            <button type="button" data-orientation="portrait" aria-pressed="true">▯ Portrait</button>
-            <button type="button" data-orientation="landscape" aria-pressed="false">▭ Landscape</button>
-          </div>
-        </div>
         <div class="field">
           <label class="label" for="cardPunch">Hole for clip or lanyard</label>
           <select id="cardPunch" class="input">
@@ -355,6 +359,13 @@ details.grade-part[open] > summary {margin-bottom:8px}
             <option value="round">Round hole</option>
             <option value="none">No hole</option>
           </select>
+        </div>
+        <div id="orientationField" class="field">
+          <span class="label">Layout</span>
+          <div class="segmented" role="group" aria-label="Card layout">
+            <button type="button" data-orientation="portrait" aria-pressed="true">▯ Portrait</button>
+            <button type="button" data-orientation="landscape" aria-pressed="false">▭ Landscape</button>
+          </div>
         </div>
         <p id="printerNote" class="hint" hidden>Most plastic ID card printers only take CR80 (some also CR79). Print this size on paper or card stock with an office printer, then use a badge holder.</p>
         <div class="inline">
