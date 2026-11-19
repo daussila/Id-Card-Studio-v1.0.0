@@ -70,9 +70,17 @@ are in the new `dist` folder.
 ## 4. Using it
 
 **The ID Card Studio folder.** The first time the app starts, it asks where to keep your
-files: **Documents** (this computer only) or **a shared folder** (OneDrive, Google Drive,
-Dropbox or a network drive). Open the folder and its parts from the **File** menu. The
-examples below use Windows `\`; on a Mac it is `/`.
+files: **Documents**, or **Choose a folder…** for any other place: the Desktop, another drive
+(`D:\`), a folder you made yourself, or a shared OneDrive / Google Drive / Dropbox / network
+folder. Change it any time with **File → Change Data Folder…**.
+
+- An **empty folder** you choose (for example one you just made) is used as it is.
+- A **drive** or a folder that already has other things in it (Desktop, Documents…) gets an
+  **ID Card Studio** folder inside it, so your files stay together.
+- A folder that already has ID Card Studio files (from another computer) is used as it is.
+
+Open the folder and its parts from the **File** menu. The examples below use Windows `\`; on
+a Mac it is `/`.
 
 ```
 ID Card Studio\
@@ -92,7 +100,7 @@ ID Card Studio\
 2. On the first computer: **File → Change Data Folder…**, choose the shared folder, and click
    **Copy my files there**. The app restarts and uses the shared folder. (Your old folder is
    not changed.)
-3. On each other computer: install the app, and when it asks, click **Choose a shared folder…**
+3. On each other computer: install the app, and when it asks, click **Choose a folder…**
    and pick the same folder (on a computer that already uses the app: **File → Change Data
    Folder…**). Lists, designs, photos and the school name are all there; no setup needed.
 4. A person or photo added on one computer appears on the others when you come back to the
