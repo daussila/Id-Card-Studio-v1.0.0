@@ -8,9 +8,11 @@
   "private": true,
   "main": "electron/main.js",
   "scripts": {
-    "vendor": "node scripts/copy-vendor.js",
     "start": "npm run vendor && electron .",
+    "vendor": "node scripts/copy-vendor.js",
     "dist": "npm run vendor && electron-builder --win nsis portable --publish never",
+    "dist:setup": "npm run vendor && electron-builder --win nsis --publish never",
+    "dist:portable": "npm run vendor && electron-builder --win portable --publish never",
     "dist:mac": "npm run vendor && electron-builder --mac --publish never"
   },
   "devDependencies": {
