@@ -23,17 +23,23 @@ on your own computer:
 2. Click **uploading an existing file** and drag in **everything inside this folder**.
    Click **Commit changes**.
 3. GitHub's upload page often skips the hidden `.github` folder. If the **Actions** tab does
-   not list **Build Windows app** and **Build Mac app**, create each workflow file with
+   not list **Build Windows setup**, **Build Windows portable** and **Build Mac app**, create
+   each workflow file with
    **Add file → Create new file**, type its name (for example
    `.github/workflows/build-mac.yml`), paste in the file's text, and commit.
 
 ## 2. Get the Windows app
 
-1. **Actions** tab → **Build Windows app** → **Run workflow** → **Run workflow**.
-2. Wait about 5–10 minutes for the green check mark, open the run, and download
-   **ID-Card-Studio-Windows** at the bottom. It contains:
-   - `ID-Card-Studio-Setup-1.0.0.exe`: the installer
-   - `ID-Card-Studio-Portable-1.0.0.exe`: runs without installing (for a USB stick, for example)
+There are two Windows versions, each with its own build. Run the one you need (or both):
+
+| Build (in the **Actions** tab) | Download at the bottom of the run | What it is |
+|---|---|---|
+| **Build Windows setup** | **ID-Card-Studio-Windows-Setup** → `ID-Card-Studio-Setup-1.0.0.exe` | The installer (Start menu, desktop shortcut, uninstall) |
+| **Build Windows portable** | **ID-Card-Studio-Windows-Portable** → `ID-Card-Studio-Portable-1.0.0.exe` | Runs without installing, for example from a USB stick; keeps its files next to the `.exe` |
+
+1. **Actions** tab → choose the build → **Run workflow** → **Run workflow**.
+2. Wait about 5–10 minutes for the green check mark, open the run, and download the file at
+   the bottom.
 3. Double-click the installer. Because the app is not signed with a paid certificate,
    Windows may show **"Windows protected your PC"**. Click **More info → Run anyway**. This
    happens only once.
@@ -68,7 +74,8 @@ where people run the setup themselves)
 2. In GitHub: **Settings → Secrets and variables → Actions → New repository secret**:
    - `WIN_CSC_LINK`: paste (the certificate was copied to the clipboard in step 1)
    - `WIN_CSC_KEY_PASSWORD`: the password you chose
-3. Run **Build Windows app** again. The app is now signed by your school.
+3. Run **Build Windows setup** (and/or **Build Windows portable**) again. The app is now
+   signed by your school.
 4. Make the school computers trust it: in **Group Policy Management**, edit a policy for the
    computers → *Computer Configuration → Policies → Windows Settings → Security Settings →
    Public Key Policies*, and import `IDCardStudio-signing.cer` into both **Trusted Root
@@ -102,7 +109,8 @@ trust this certificate.
 ## Build it on your own computer (optional)
 
 Install **Node.js LTS** from <https://nodejs.org>, open a terminal in this folder, and run
-`npm install`, then `npm run dist` (on Windows) or `npm run dist:mac` (on a Mac). The files
+`npm install`, then `npm run dist:setup` or `npm run dist:portable` (on Windows; `npm run
+dist` makes both) or `npm run dist:mac` (on a Mac). The files
 are in the new `dist` folder.
 
 ---
@@ -221,6 +229,7 @@ elsewhere) to a USB stick or a network drive from time to time.
 - `scripts/copy-vendor.js` copies the barcode and QR code libraries into `app/vendor` so the
   app works offline. `scripts/mac-adhoc-sign.js` gives the Mac app a free ad-hoc signature,
   which Apple silicon Macs need.
-- `.github/workflows/`: `build-windows.yml` and `build-mac.yml`. Pushing a tag such as
+- `.github/workflows/`: `build-windows-setup.yml`, `build-windows-portable.yml` and
+  `build-mac.yml`. Pushing a tag such as
   `v1.0.1` also creates a Release with the files attached.
 - New version: change `version` in `package.json`, then run the workflows again.
