@@ -1,0 +1,47 @@
+# Builds the Windows installer (ID-Card-Studio-Setup-x.x.x.exe) on GitHub's own Windows computers.
+# Start it from the repository's Actions tab ("Build Windows setup" → "Run workflow"),
+# or push a tag such as v1.0.0 to also publish a Release with the file attached.
+name: Build Windows setup
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install build tools
+        run: npm install
+
+      - name: Build the installer
+        run: npm run dist:setup
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+          # Optional: sign the app with the school's own certificate (see README → "Installing on
+          # school computers"). Without these two secrets the app is built unsigned, as before.
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+
+      - name: Keep the files for download
+        uses: actions/upload-artifact@v4
+        with:
+          name: ID-Card-Studio-Windows-Setup
+          path: |
+            dist/ID-Card-Studio-Setup-*.exe
+
+      - name: Publish a Release (tags only)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/ID-Card-Studio-Setup-*.exe
