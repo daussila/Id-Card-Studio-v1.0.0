@@ -38,6 +38,46 @@ on your own computer:
    Windows may show **"Windows protected your PC"**. Click **More info → Run anyway**. This
    happens only once.
 
+## Installing on school computers (no warnings)
+
+Windows warns about apps from the internet that are not signed by a known publisher. On
+school computers you can avoid this for free:
+
+**A. Intune** (Apps → Windows → Add → *Windows app (Win32)*)
+1. Wrap the installer with Microsoft's *Win32 Content Prep Tool*:
+   `IntuneWinAppUtil.exe -c <folder with the setup> -s ID-Card-Studio-Setup-1.0.0.exe -o <output folder>`
+2. Install command: `ID-Card-Studio-Setup-1.0.0.exe /S /allusers`
+3. Uninstall command: `"%ProgramFiles%\ID Card Studio\Uninstall ID Card Studio.exe" /S /allusers`
+4. Install behavior: **System**. Detection rule: file `%ProgramFiles%\ID Card Studio\ID Card Studio.exe` exists.
+
+Apps installed this way show no SmartScreen warning.
+
+**B. One computer:** right-click the setup file → **Properties** → tick **Unblock** → **OK**,
+then run it.
+
+**C. Optional: sign the app with a free school certificate** (for Group Policy, or computers
+where people run the setup themselves)
+1. On a Windows PC, open **PowerShell** and run (change the name if you like):
+   ```
+   $cert = New-SelfSignedCertificate -Type CodeSigningCert -Subject "CN=Harmony Public Schools" -CertStoreLocation Cert:\CurrentUser\My -NotAfter (Get-Date).AddYears(5)
+   $pw = Read-Host "Choose a password" -AsSecureString
+   Export-PfxCertificate -Cert $cert -FilePath "$env:USERPROFILE\Desktop\IDCardStudio-signing.pfx" -Password $pw
+   Export-Certificate -Cert $cert -FilePath "$env:USERPROFILE\Desktop\IDCardStudio-signing.cer"
+   [Convert]::ToBase64String([IO.File]::ReadAllBytes("$env:USERPROFILE\Desktop\IDCardStudio-signing.pfx")) | Set-Clipboard
+   ```
+2. In GitHub: **Settings → Secrets and variables → Actions → New repository secret**:
+   - `WIN_CSC_LINK`: paste (the certificate was copied to the clipboard in step 1)
+   - `WIN_CSC_KEY_PASSWORD`: the password you chose
+3. Run **Build Windows app** again. The app is now signed by your school.
+4. Make the school computers trust it: in **Group Policy Management**, edit a policy for the
+   computers → *Computer Configuration → Policies → Windows Settings → Security Settings →
+   Public Key Policies*, and import `IDCardStudio-signing.cer` into both **Trusted Root
+   Certification Authorities** and **Trusted Publishers**.
+
+Keep the `.pfx` file and its password safe (it can sign programs in your school's name), and
+delete the copy on the Desktop once the secret is saved. Computers outside the school do not
+trust this certificate.
+
 ## 3. Get the Mac app
 
 1. **Actions** tab → **Build Mac app** → **Run workflow** → **Run workflow**.
