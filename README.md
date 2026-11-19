@@ -127,6 +127,10 @@ folder. Change it any time with **File → Change Data Folder…**.
   **ID Card Studio** folder inside it, so your files stay together.
 - A folder that already has ID Card Studio files (from another computer) is used as it is.
 
+**Renaming or moving the folder** (for example to `ID CARD STUDIO 2026-2027`): close the app,
+rename or move the folder in File Explorer / Finder, and open the app. It says the folder was
+not found; click **Find the folder…** and choose the renamed folder.
+
 Open the folder and its parts from the **File** menu. The examples below use Windows `\`; on
 a Mac it is `/`.
 
